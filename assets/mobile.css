@@ -1,0 +1,39 @@
+@CHARSET "UTF-8";
+
+div.section {
+	background-color: #dddddd;
+	width: 100%;
+	height: auto;
+	vertical-align: middle;
+	padding: 5%;
+	margin: 5%;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+img#logo {
+        margin-top: 20px;
+	width: auto;
+	height: auto;
+}
+
+input {
+        width: 90%;
+        font-size: auto;
+        margin: 1%;
+}
+
+#section_one {
+	display: block;
+	float: none;
+}
+
+#section_two {
+	display: block;
+	float: none;
+}
+
+#section_three {
+	display: block;
+	float: none;
+}
