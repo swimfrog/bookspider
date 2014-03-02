@@ -17,6 +17,8 @@ my $outdir = "/tmp";
 my $default_email = "username\@kindle.com";	# Comment out if you don't want a default address.
 my $assetprefix = "http://bookspider.swimfrog.com";
 #$assetprefix = "/bookspider/assets";	# override for development on macbook
+my $from = 'gmail_account_username@gmail.com';
+my $password = 'gmail_account_password_goes_here';
 
 # Path untainting
 $ENV{"PATH"} = "";
@@ -122,8 +124,8 @@ sub send_file_mail {
 	my $subject = shift;
 	my $filename = shift;
 	
-	my $from = 'swimfrogtodo@gmail.com';
-	my $password = 'uiwn(7646';
+	my $from = 'username';
+	my $password = 'password';
 	
 	open(FILE, "<$filename") || die("Couldn't open file to mail: $!");
 	
