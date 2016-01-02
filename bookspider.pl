@@ -26,7 +26,7 @@ bookspider.pl - Download an eBook from a website that does not support exporting
 
 =head1 SYNOPSIS
 
-bookspider.pl [-h|--help --man] [-v|--verbose] [-p|--plugin PLUGIN] [-d|--pluginpath PATH] [-f|--output OUTPUT] [-i|--incode INCODE] [-o|--outcode OUTCODE] [bookId]
+bookspider.pl [-h|--help --man] [-v|--verbose] [-p|--plugin PLUGIN] [-d|--pluginpath PATH] [-f|--output OUTPUT] [-l|--limit NUM] [-i|--incode INCODE] [-o|--outcode OUTCODE] [bookId]
 
 =head1 OPTIONS
 
@@ -56,6 +56,10 @@ Path where plugin files reside.
 
 Output book content to a file. If not specified, content will be printed to STDOUT.
 
+=item B<--limit NUM>
+
+Limit chapters to NUM chapters. Useful when developing plugins
+
 =item B<--incode | --outcode>
 
 The input and output encodings to use. By default, incode will plugin-specific and output will be UTF-8.
@@ -75,6 +79,7 @@ my $output="";
 my $incode="";
 my $outcode="";
 my $limit=9999;
+my $listplugins=0;
 
 my $opts = Getopt::Long::GetOptions(
 	"help|h" => sub { pod2usage(7) },
@@ -86,6 +91,7 @@ my $opts = Getopt::Long::GetOptions(
 	"incode|i=s" => \$incode,
 	"outcode|o=s" => \$outcode,
 	"limit|l=i" => \$limit,
+	"listplugins+" => sub {print join("\n", getPluginList()); exit(); }
 ) || pod2usage(2);
 
 my $bookId = shift;
@@ -93,7 +99,7 @@ my $bookId = shift;
 pod2usage(-msg => "You must specify a book ID.", -exitval => 1) if (! $bookId);
 if (! $pluginName) {
 	print "You must specify a plugin via --plugin.\n\n";
-	print "available plugins: ".getPluginList()."\n\n";
+	print "available plugins: ".join(" ", getPluginList())."\n\n";
 	pod2usage(1);
 }
 
@@ -244,13 +250,13 @@ sub getPluginList {
 	my @files = grep(/\.pm$/, readdir(DIR));
 	closedir(DIR);
 	
-	my $plugins;
+	my @plugins;
 	foreach my $file (@files) {
-		$file =~ s/\.pl//g;
-		$plugins = $plugins."$file ";
+		$file =~ s/\.p[lm]//g;
+		push(@plugins, $file);
 	}
 	
-	return $plugins;
+	return @plugins;
 }
 
 
@@ -277,7 +283,7 @@ foreach my $key (keys %$bookData) {
 }
 
 my $buffer;
-foreach my $key (sort {$a <=> $b} (keys(%sorthash))) { # {$a <=> $b} is "numerically ascending".
+foreach my $key (sort myplugin::plugin_sort (keys(%sorthash))) { # {$a <=> $b} is "numerically ascending".
 	#TODO: Does this work with chinese numbers? (一二三四)?
 	
 	my $url = $sorthash{$key};

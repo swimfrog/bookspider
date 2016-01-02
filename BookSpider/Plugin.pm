@@ -72,4 +72,11 @@ sub print_chapter {
 sub help {
 	return ( "No help available." );
 }
+
+package myplugin;
+sub plugin_sort ($$) {
+	#print "DEBUG: Compared ".$_[0]." with ".$_[1]."\n";
+	$_[0] <=> $_[1];
+}
+
 1;

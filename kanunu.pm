@@ -21,18 +21,17 @@ sub new {
 	};
 	
 	# Plugin Variables
-	$self->{PLUGIN_NAME} = "jjwxc";
+	$self->{PLUGIN_NAME} = "kanunu";
 	# The name of the site that this plugin is for
-	$self->{PLUGIN_DESC} = "www.jjwxc.net plugin";
+	$self->{PLUGIN_DESC} = "book.kanunu.com plugin";
 	# The url to use for the index page (The one that contains all links, or the starting page). %s is replaced with the bookId.
-	$self->{INDEX_URL} = "http://www.jjwxc.net/onebook.php?novelid=".$self->{BOOK_ID};
+	$self->{INDEX_URL} = "http://book.kanunu.org/files/chinese/".$self->{BOOK_ID}.".html";
 	# The url pattern to match for each chapter. Use groups to parse out additional data from the url.
-	$self->{RX_CHAPTER_URL} = "/onebook\\.php\\?novelid=".$self->{BOOK_ID}."&chapterid=(\\d+)\$";	
-	$self->{RX_CHAPTER_URL_INDEX} = "/onebook\\.php\\?novelid=".$self->{BOOK_ID};
-	$self->{RX_CHAPTER_TITLE} = "\\x{2c7}(.*?)\\x{2c7}"; # ˇ = \x{2c7}
-	#$self->{RX_CHAPTER_TITLE} = "\\p{Close_Punctuation}.*? ˇ(.*?)ˇ"; #This was too aggressive. Finding the first one in ^s seems to work.
-	$self->{RX_BOOK_TITLE} = "\\p{Open_Punctuation}(.*?)\\p{Close_Punctuation}";
-	$self->{RX_BOOK_ID} = "(\\d+)";
+	$self->{RX_CHAPTER_URL} = "/files/chinese/".$self->{BOOK_ID}."/(\\d+).html";	
+	$self->{RX_CHAPTER_URL_INDEX} = "/files/chinese/".$self->{BOOK_ID}.".html";
+	$self->{RX_CHAPTER_TITLE} = "^(.*?)_";
+	$self->{RX_BOOK_TITLE} = "<strong>(.*?)</strong>";
+	$self->{RX_BOOK_ID} = "(\\d+)/(\\d+)";
 
 	$self->{USE_INDEX_TITLE_AS_BOOK_TITLE} = 1;
 	
@@ -45,14 +44,11 @@ sub new {
 sub isMatchingUrl {
 	my ($self, $url) = @_;
 	
-	#use re 'debug';
-	
 	my $rxChapterUrl = $self->{RX_CHAPTER_URL};
 	if ($url =~ m|$rxChapterUrl|) {
 		return 1;
 	}
 	
-	print STDERR "URL $url does not match $rxChapterUrl\n" if ($self->{VERBOSE} > 1);
 	return 0;
 }
 
@@ -84,8 +80,7 @@ sub parseIndex {
 		}
 	}
 	
-	#$self->parseDocument($mech, $origUrl);
-	return 1;
+	$self->parseDocument($mech, $origUrl);
 }
 
 sub parseDocument {
@@ -98,8 +93,8 @@ sub parseDocument {
 	my $title = $mech->title();
 	my $url = $mech->uri();
 	
-#	my $tree = HTML::TreeBuilder::XPath->new();
-#	$tree->parse_content($content);
+	my $tree = HTML::TreeBuilder::XPath->new();
+	$tree->parse_content($content);
 	
 	my $rxChapterUrl = $self->{RX_CHAPTER_URL};
 	my $rxChapterUrlIndex = $self->{RX_CHAPTER_URL_INDEX};
@@ -113,8 +108,6 @@ sub parseDocument {
 		print STDERR "Error: Could not parse chapter number from $url using $rxChapterUrl" if ($self->{VERBOSE});
 	}
 	
-	#use re 'debug';
-	
 	my $rxChapterTitle = $self->{RX_CHAPTER_TITLE};
 	if (($self->{BOOK_DATA}{$url}{'linkText'}) && ($self->{BOOK_DATA}{$url}{'linkText'} =~ m|$rxChapterTitle|)) {
 		print STDERR "Found chapter number in linkText: $1\n" if ($self->{VERBOSE});
@@ -123,32 +116,20 @@ sub parseDocument {
 	
 	my $text;
 	
-	use HTML::TokeParser;
-	
-	my $tree = HTML::TokeParser->new(\$content);
-	while (my $tag = $tree->get_tag("div")) {
-        if (($tag->[1]{class}) && ($tag->[1]{class} eq "noveltext")) {
-                while (my $contents = $tree->get_text("font", "/div", "div") ) {
-                        $text = $text."$contents\n";
-                        $tree->get_text("/font");
-                }
-        }
-	}
-
-
-
-	
 	my $f = HTML::FormatText::WithLinks->new();
-	$text = $f->parse($text);
+	foreach my $node ($tree->findnodes_as_string("//tr/td[\@bgcolor='#FFFFFF']/p")) {
+		#Strip out H2 tags (they contain chapters, which we already have)
+		#$text =~ s|<h2>.*?</h2>||g;
+		$text = $text.$f->parse($node);
+		#$text = $text.$node;
+	}
+	
+	
 	
 	#TODO Using this method, the entire site must use the same encoding. Any way for different pages to have different encodings? Can get current page's encoding from HTTP header?
 	$text = $self->convert_encoding($text);
 	
 	$self->{BOOK_DATA}{$url}{'content'} = $text;
-	
-	#use re 'debug';
-	
-	print STDERR "TITLE is $title\n" if ($self->{VERBOSE} > 1);
 	
 	if ($title =~ m|$rxChapterTitle|) {
 		if ($1) {
@@ -170,51 +151,6 @@ sub print_chapter {
 	my ($self, $bookData) = @_;
 	
 	return $bookData->{'title'} . " (" . $bookData->{'number'} . ")\n\n" . $bookData->{'content'} . "\n";
-}
-
-# PLUGIN STUFF ENDS HERE---------------------------------------------------------package myplugin;
-sub plugin_sort ($$) {
-#	# Sort first alphabetically, then numerically
-#	my ($aa, $ab, $na, $nb);
-#	if ($_[0] =~ m/([a-z]+)/) { $aa = $1; }
-#	if ($_[1] =~ m/([a-z]+)/) { $ab = $1; }
-#	if ($_[0] =~ m/([0-9]+)/) { $na = $1; }
-#	if ($_[1] =~ m/([0-9]+)/) { $nb = $1; }
-#	#$aa = join('', grep(/[a-z]+/, $_[0]));
-#	#$ab = join('', grep(/[a-z]+/, $_[1]));
-#	#$na = join('', grep(/[0-9]+/, $_[0]));
-#	#$nb = join('', grep(/[0-9]+/, $_[1]));
-#	print "DEBUG: $aa $ab $na $nb\n";
-#
-#	if ( uc($aa) eq uc($ab)) {
-#		print "DEBUG: alpha compared ".uc($aa)." with ".uc($ab)."\n";
-#		$na <=> $nb;
-#	} else {
-#		print "DEBUG: num compared ".uc($na)." with ".uc($nb)."\n";
-#		uc($aa) cmp uc($ab);
-#	}
-my $x = uc( shift );
-my $y = uc( shift );
-if( !($x =~ /\d+(\.\d+)?/) ) {
-return $x cmp $y;
-}
-my $xBefore = $`;
-my $xMatch = $&;
-my $xAfter = $';
-if( !($y =~ /\d+(\.\d+)?/) ) {
-return $x cmp $y;
-}
-if( $xBefore eq $` ) {
-if( $xMatch == $& ) {
-return naturalSortInner( $xAfter, $' );
-} else {
-return $xMatch <=> $&;
-}
-} else {
-return $x cmp $y;
-}
-print "\n<before: '$xBefore', match: '$xMatch', after: '$xAfter'>\
-+n";
 }
 
 # PLUGIN STUFF ENDS HERE---------------------------------------------------------

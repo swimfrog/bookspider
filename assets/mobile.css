@@ -1,0 +1,24 @@
+@CHARSET "UTF-8";
+
+div.section {
+	background-color: #dddddd;
+	width: 30%;
+	height: 200px;
+	vertical-align: middle;
+	margin: 10px;
+}
+
+#section_one {
+	display: block;
+	float: none;
+}
+
+#section_two {
+	display: block;
+	float: none;
+}
+
+#section_three {
+	display: block;
+	float: none;
+}
