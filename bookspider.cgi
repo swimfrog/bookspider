@@ -3,19 +3,24 @@
 use CGI;
 use CGI::Carp qw(fatalsToBrowser);
 use Data::Dumper;
-#use MIME::Lite;
-#use Net::SMTP::SSL;
+use MIME::Lite;
+use Net::SMTP::SSL;
 use File::Basename;
 use POSIX qw(dup2);
 
 my $q = CGI->new;
 $q->charset('utf-8');
 
+# Set this to the bookspider.test.sh script for a local development environment.
 my $command = "/opt/scripts/bookspider/bookspider.pl";
+#$command = "/Users/benhaw01/desktop/BookSpider/bookspider.test.sh";	# override for development on macbook
 my $outdir = "/tmp";
 my $default_email = "username\@kindle.com";	# Comment out if you don't want a default address.
+# Set this to a local directory if you want to develop locally.
 my $assetprefix = "http://bookspider.swimfrog.com";
-$assetprefix = "/bookspider/assets";	# override for development on macbook
+#$assetprefix = "/bookspider/assets";	# override for development on macbook
+my $from = 'gmail_account_username@gmail.com';
+my $password = 'gmail_account_password_goes_here';
 
 # Path untainting
 $ENV{"PATH"} = "";
@@ -60,7 +65,9 @@ Content-type: text/html;charset=UTF-8\n
 <link rel="stylesheet" type="text/css" href="$assetprefix/stylesheet.css" id="thecss">
 EOF
 
-print '<link rel="stylesheet" type="text/css" href="'.$assetprefix.'/mobile.css" id="mobilecss"\n' if $ismobile;
+print '<link rel="stylesheet" type="text/css" href="'.$assetprefix.'/mobile.css" id="mobilecss"\n' if ismobile($ENV{HTTP_USER_AGENT});
+
+print STDERR "client (useragent=".$ENV{HTTP_USER_AGENT}." mobile=".ismobile($ENV{HTTP_USER_AGENT})."\n";
 
 print <<EOF;
 <script src="$assetprefix/jquery-1.7.2.min.js"></script>
@@ -90,15 +97,15 @@ sub in_array {
 
 sub ismobile {
 	$useragent=lc(@_);
-	$is_mobile = '0';
-	if($useragent =~ m/(android|up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone)/i) {
+	$is_mobile = 0;
+	if($useragent =~ m/(android|up.browser|up.link|mmp|symbian|smartphone|midp|wap|phone|kindle)/i) {
 		$is_mobile=1;
 	}
 	if((index($ENV{HTTP_ACCEPT},'application/vnd.wap.xhtml+xml')>0) || ($ENV{HTTP_X_WAP_PROFILE} || $ENV{HTTP_PROFILE})) {
 		$is_mobile=1;
 	}
 	$mobile_ua = lc(substr $ENV{HTTP_USER_AGENT},0,4);
-	@mobile_agents = ('w3c ','acs-','alav','alca','amoi','andr','audi','avan','benq','bird','blac','blaz','brew','cell','cldc','cmd-','dang','doco','eric','hipt','inno','ipaq','java','jigs','kddi','keji','leno','lg-c','lg-d','lg-g','lge-','maui','maxo','midp','mits','mmef','mobi','mot-','moto','mwbp','nec-','newt','noki','oper','palm','pana','pant','phil','play','port','prox','qwap','sage','sams','sany','sch-','sec-','send','seri','sgh-','shar','sie-','siem','smal','smar','sony','sph-','symb','t-mo','teli','tim-','tosh','tsm-','upg1','upsi','vk-v','voda','wap-','wapa','wapi','wapp','wapr','webc','winw','winw','xda','xda-');
+	@mobile_agents = ('w3c ','acs-','alav','alca','amoi','andr','audi','avan','benq','bird','blac','blaz','brew','cell','cldc','cmd-','dang','doco','eric','hipt','inno','ipaq','java','jigs','kddi','keji','leno','lg-c','lg-d','lg-g','lge-','maui','maxo','midp','mits','mmef','mobi','mot-','moto','mwbp','nec-','newt','noki','oper','palm','pana','pant','phil','play','port','prox','qwap','sage','sams','sany','sch-','sec-','send','seri','sgh-','shar','sie-','siem','smal','smar','sony','sph-','symb','t-mo','teli','tim-','tosh','tsm-','upg1','upsi','vk-v','voda','wap-','wapa','wapi','wapp','wapr','webc','winw','winw','xda','xda-',);
 	if(in_array(\@mobile_agents,$mobile_ua)) {
 		$is_mobile=1;
 	}
@@ -119,16 +126,16 @@ sub send_file_mail {
 	my $subject = shift;
 	my $filename = shift;
 	
-	my $from = 'USERNAME_GOES_HERE';
-   my $password = 'PASSWORD_GOES_HERE';
+	my $from = 'username';
+	my $password = 'password';
 	
 	open(FILE, "<$filename") || die("Couldn't open file to mail: $!");
 	
 	my $msg = MIME::Lite->new(
 		From    =>$from,
 		To      =>$to,
-		CC      =>'swimfrog@gmail.com',
-		Reply-To	=> 'benh@swimfrog.com',
+      #CC      =>'cc@gmail.com',
+      #Reply-To	=> 'cc@gmail.com',
 		Subject =>$subject,
 		Type    =>'text/plain',
 		Data    =>"Book delivery.",
